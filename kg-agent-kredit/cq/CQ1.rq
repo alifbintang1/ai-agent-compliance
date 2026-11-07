@@ -1,0 +1,10 @@
+# CQ1: Tool apa saja yang dimiliki agent kredit, dan mana yang memutus nasib orang?
+PREFIX ac:  <https://example.org/agent-compliance#>
+PREFIX ex:  <https://example.org/agent-kredit#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+SELECT ?tool ?affectsPerson WHERE {
+  ex:agentKredit ac:hasTool ?tool .
+  OPTIONAL { ?ev ac:about ?tool ;
+                 ac:affectsPerson ?affectsPerson . }
+}

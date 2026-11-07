@@ -1,0 +1,11 @@
+# CQ5: Tool mana yang evidence-nya saling bertentangan soal approval?
+PREFIX ac:  <https://example.org/agent-compliance#>
+PREFIX ex:  <https://example.org/agent-kredit#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+SELECT DISTINCT ?tool ?evYes ?evNo WHERE {
+  ?evYes ac:about/owl:sameAs? ?tool ;
+         ac:requiresApproval true .
+  ?evNo  ac:about/owl:sameAs? ?tool ;
+         ac:requiresApproval false .
+}

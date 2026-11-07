@@ -1,0 +1,11 @@
+# CQ2: Apa risk class agent kredit, dan dari evidence apa disimpulkan?
+PREFIX ac:  <https://example.org/agent-compliance#>
+PREFIX ex:  <https://example.org/agent-kredit#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+SELECT ?riskClass ?purpose ?useArea ?ev WHERE {
+  ?ev ac:about ex:agentKredit ;
+      ac:purpose ?purpose .
+  ?useArea ac:coversPurpose ?purpose ;
+           ac:impliesRiskClass ?riskClass .
+}

@@ -1,0 +1,10 @@
+# CQ3: Rule mana yang berlaku untuk agent kredit, dan untuk tool apa?
+PREFIX ac:  <https://example.org/agent-compliance#>
+PREFIX ex:  <https://example.org/agent-kredit#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+SELECT ?rule ?target WHERE {
+  ex:agentKredit ac:hasRiskClass ?rc .
+  ?rule ac:appliesToRiskClass ?rc ;
+        ac:appliesTo ?target .
+}

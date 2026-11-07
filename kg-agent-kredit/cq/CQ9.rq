@@ -1,0 +1,12 @@
+# CQ9: Evidence mana yang confidence-nya di bawah 0,95 sehingga perlu human review?
+PREFIX ac:  <https://example.org/agent-compliance#>
+PREFIX ex:  <https://example.org/agent-kredit#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+SELECT ?ev ?file ?location ?confidence WHERE {
+  ?ev ac:confidence ?confidence ;
+      ac:fromSource ?file .
+  OPTIONAL { ?ev ac:location ?location }
+  FILTER (?confidence < 0.95)
+}
+ORDER BY ?confidence

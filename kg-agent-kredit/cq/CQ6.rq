@@ -1,0 +1,12 @@
+# CQ6: Action mana yang memanggil tool yang memutus nasib orang tanpa approval?
+PREFIX ac:  <https://example.org/agent-compliance#>
+PREFIX ex:  <https://example.org/agent-kredit#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+SELECT ?action ?session ?time WHERE {
+  ?action ac:callsTool ?tool ;
+          ac:inSession ?session ;
+          ac:atTime ?time .
+  ?ev ac:about ?tool ; ac:affectsPerson true .
+  FILTER NOT EXISTS { ?action ac:hasApproval ?a }
+}

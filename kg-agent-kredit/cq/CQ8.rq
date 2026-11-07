@@ -1,0 +1,14 @@
+# CQ8: Compliance risk apa saja, diurutkan dari risk level tertinggi, beserta evidence-nya?
+PREFIX ac:  <https://example.org/agent-compliance#>
+PREFIX ex:  <https://example.org/agent-kredit#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+SELECT ?cr ?rule ?pattern ?level ?ev WHERE {
+  ?cr a ac:ComplianceRisk ;
+      ac:forRule ?rule ;
+      ac:pattern ?pattern ;
+      ac:basedOn ?ev .
+  OPTIONAL { ?cr ac:hasRiskLevel ?level .
+             ?level ac:rank ?rank . }
+}
+ORDER BY (COALESCE(?rank, 99)) ?cr

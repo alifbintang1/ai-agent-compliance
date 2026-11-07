@@ -1,0 +1,15 @@
+# CQ7: Untuk rule yang berlaku, source mana yang tidak punya evidence (Unknown)?
+PREFIX ac:  <https://example.org/agent-compliance#>
+PREFIX ex:  <https://example.org/agent-kredit#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+SELECT DISTINCT ?rule ?sourceType WHERE {
+  ?rule ac:appliesTo ?target .
+  VALUES ?sourceType { ac:Documentation ac:Code ac:Log }
+  FILTER NOT EXISTS {
+    ?rule ac:checksProperty ?p .
+    ?ev ac:about/owl:sameAs? ?target ;
+        ?p ?v ;
+        ac:fromSource/a ?sourceType .
+  }
+}

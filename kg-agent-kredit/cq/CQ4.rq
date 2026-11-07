@@ -1,0 +1,13 @@
+# CQ4: Untuk rule E03, apa kata documentation, code, dan log?
+PREFIX ac:  <https://example.org/agent-compliance#>
+PREFIX ex:  <https://example.org/agent-kredit#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+
+SELECT ?sourceType ?ev ?property ?value ?location WHERE {
+  ac:E03 ac:appliesTo ?tool ;
+         ac:checksProperty ?property .
+  ?ev ac:about/owl:sameAs? ?tool ;
+      ?property ?value ;
+      ac:fromSource/a ?sourceType .
+  OPTIONAL { ?ev ac:location ?location }
+}
