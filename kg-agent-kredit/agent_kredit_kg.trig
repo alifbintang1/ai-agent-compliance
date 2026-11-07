@@ -26,7 +26,7 @@ ac:ontology {
   ac:Documentation a owl:Class ; rdfs:label "documentation"@en ; rdfs:comment "Deskripsi produk dan panduan pengguna."@id ; ac:group "Evidence" .
   ac:Code a owl:Class ; rdfs:label "code"@en ; rdfs:comment "Kode program dan file konfigurasi agent."@id ; ac:group "Evidence" .
   ac:Log a owl:Class ; rdfs:label "log"@en ; rdfs:comment "Catatan aktivitas agent saat berjalan."@id ; ac:group "Evidence" .
-  ac:HumanReview a owl:Class ; rdfs:label "human review"@en ; rdfs:comment "Pemeriksaan compliance risk oleh manusia. Temuannya disimpan sebagai evidence baru."@id ; ac:group "Evidence" .
+  ac:HumanReview a owl:Class ; rdfs:label "human review"@en ; rdfs:comment "Pemeriksaan compliance risk oleh manusia. Hasilnya disimpan sebagai evidence baru."@id ; ac:group "Evidence" .
   ac:Framework a owl:Class ; rdfs:label "framework"@en ; rdfs:comment "Dokumen acuan yang memuat kewajiban, misalnya EU AI Act dan IMDA."@id ; ac:group "Regulasi" .
   ac:Rule a owl:Class ; rdfs:label "rule"@en ; rdfs:comment "Satu kewajiban dari framework yang ditulis ulang supaya bisa di-check."@id ; ac:group "Regulasi" .
   ac:UseArea a owl:Class ; rdfs:label "use area"@en ; rdfs:comment "Area penggunaan yang menentukan risk class, misalnya Annex III poin 5(b)."@id ; ac:group "Regulasi" .
