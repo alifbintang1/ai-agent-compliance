@@ -1,0 +1,122 @@
+# Contoh KG agent kredit (fiktif). Format TriG: satu named graph per lapisan atau source.
+@prefix ac:   <https://example.org/agent-compliance#> .
+@prefix ex:   <https://example.org/agent-kredit#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd:  <http://www.w3.org/2001/XMLSchema#> .
+
+# Lapisan 1: ontology (dibuat sekali)
+ac:ontology {
+  ac:Framework a owl:Class .
+  ac:Rule a owl:Class .
+  ac:RiskClass a owl:Class .
+  ac:UseArea a owl:Class .
+  ac:Purpose a owl:Class .
+  ac:ComplianceRisk a owl:Class .
+  ac:RiskLevel a owl:Class .
+  ac:Agent a owl:Class .
+  ac:Tool a owl:Class .
+  ac:Evidence a owl:Class .
+  ac:Action a owl:Class .
+  ac:Approval a owl:Class .
+  ac:Source a owl:Class .
+  ac:Documentation a owl:Class .
+  ac:Code a owl:Class .
+  ac:Log a owl:Class .
+  ac:fromFramework a owl:ObjectProperty ; rdfs:domain ac:Rule ; rdfs:range ac:Framework .
+  ac:appliesToRiskClass a owl:ObjectProperty ; rdfs:domain ac:Rule ; rdfs:range ac:RiskClass .
+  ac:appliesTo a owl:ObjectProperty ; rdfs:domain ac:Rule ; rdfs:range ac:Tool .
+  ac:impliesRiskClass a owl:ObjectProperty ; rdfs:domain ac:UseArea ; rdfs:range ac:RiskClass .
+  ac:coversPurpose a owl:ObjectProperty ; rdfs:domain ac:UseArea ; rdfs:range ac:Purpose .
+  ac:hasPurpose a owl:ObjectProperty ; rdfs:domain ac:Agent ; rdfs:range ac:Purpose .
+  ac:hasRiskClass a owl:ObjectProperty ; rdfs:domain ac:Agent ; rdfs:range ac:RiskClass .
+  ac:hasTool a owl:ObjectProperty ; rdfs:domain ac:Agent ; rdfs:range ac:Tool .
+  ac:callsTool a owl:ObjectProperty ; rdfs:domain ac:Action ; rdfs:range ac:Tool .
+  ac:hasApproval a owl:ObjectProperty ; rdfs:domain ac:Action ; rdfs:range ac:Approval .
+  ac:about a owl:ObjectProperty ; rdfs:domain ac:Evidence ; rdfs:range ac:Tool .
+  ac:about a owl:ObjectProperty ; rdfs:domain ac:Evidence ; rdfs:range ac:Agent .
+  ac:fromSource a owl:ObjectProperty ; rdfs:domain ac:Evidence ; rdfs:range ac:Source .
+  ac:Documentation rdfs:subClassOf ac:Source .
+  ac:Code rdfs:subClassOf ac:Source .
+  ac:Log rdfs:subClassOf ac:Source .
+  ac:forRule a owl:ObjectProperty ; rdfs:domain ac:ComplianceRisk ; rdfs:range ac:Rule .
+  ac:forAgent a owl:ObjectProperty ; rdfs:domain ac:ComplianceRisk ; rdfs:range ac:Agent .
+  ac:basedOn a owl:ObjectProperty ; rdfs:domain ac:ComplianceRisk ; rdfs:range ac:Evidence .
+  ac:hasRiskLevel a owl:ObjectProperty ; rdfs:domain ac:ComplianceRisk ; rdfs:range ac:RiskLevel .
+}
+
+# Lapisan 2: regulasi (dari catalog, dibuat sekali)
+ac:regulasi {
+  ac:EUAIAct a ac:Framework .
+  ac:HighRisk a ac:RiskClass .
+  ac:CreditScoring a ac:Purpose .
+  ac:AnnexIII_5b a ac:UseArea ; ac:coversPurpose ac:CreditScoring ; ac:impliesRiskClass ac:HighRisk .
+  ac:E03 a ac:Rule ; ac:fromFramework ac:EUAIAct ; ac:appliesToRiskClass ac:HighRisk ;
+      ac:article "14(1), 14(3), 14(4)(d); 26(1)" ; ac:checks "requiresApproval pada tool dengan affectsPerson = true" .
+  ac:E05 a ac:Rule ; ac:fromFramework ac:EUAIAct ; ac:appliesToRiskClass ac:HighRisk ;
+      ac:article "14(4)(e)" ; ac:checks "ada cara manusia menghentikan agent" .
+  ac:E07 a ac:Rule ; ac:fromFramework ac:EUAIAct ; ac:appliesToRiskClass ac:HighRisk ;
+      ac:article "19(1); 26(6)" ; ac:checks "logRetentionDays >= 183" .
+}
+
+# Lapisan 3: agent, satu named graph per source (dibuat otomatis per agent)
+ex:code {
+  ex:agentKredit a ac:Agent ; ac:hasTool ex:get_application , ex:score_credit , ex:reject_application ,
+      ex:forward_to_officer , ex:send_decision .
+  ex:get_application a ac:Tool .
+  ex:score_credit a ac:Tool .
+  ex:reject_application a ac:Tool .
+  ex:forward_to_officer a ac:Tool .
+  ex:send_decision a ac:Tool .
+  ex:ev-code-1 a ac:Evidence ; ac:about ex:reject_application ; ac:affectsPerson true ;
+      ac:fromSource ex:agent.yaml ; ac:location "baris 32" ; ac:confidence 1.0 .
+  ex:ev-code-2 a ac:Evidence ; ac:about ex:reject_application ; ac:requiresApproval false ;
+      ac:fromSource ex:agent.yaml ; ac:location "baris 34" ; ac:confidence 1.0 .
+  ex:ev-code-3 a ac:Evidence ; ac:about ex:agentKredit ; ac:logRetentionDays 30 ;
+      ac:fromSource ex:agent.yaml ; ac:location "baris 51" ; ac:confidence 1.0 .
+}
+ex:documentation {
+  ex:agentKredit ac:hasPurpose ac:CreditScoring .
+  ex:ev-doc-1 a ac:Evidence ; ac:about ex:agentKredit ; ac:purpose ac:CreditScoring ;
+      ac:fromSource ex:deskripsi.md ; ac:confidence 0.95 .
+  ex:rekomendasiPenolakan a ac:Tool .
+  ex:ev-doc-2 a ac:Evidence ; ac:about ex:rekomendasiPenolakan ; ac:requiresApproval true ;
+      ac:fromSource ex:manual.pdf ; ac:location "hlm. 12" ; ac:confidence 0.92 .
+  ex:ev-doc-3 a ac:Evidence ; ac:about ex:agentKredit ; ac:hasStopControl true ;
+      ac:fromSource ex:manual.pdf ; ac:location "hlm. 15" ; ac:confidence 0.90 .
+}
+ex:log {
+  ex:A-881 a ac:Action ; ac:callsTool ex:reject_application ; ac:inSession ex:S-07 ;
+      ac:atTime "10:42:04" .   # tidak ada ac:hasApproval
+  # ... 56 action reject_application lain di sesi S-01 sampai S-30, juga tanpa ac:hasApproval
+  ex:ev-log-1 a ac:Evidence ; ac:about ex:reject_application ; ac:actionsWithoutApproval 57 ;
+      ac:fromSource ex:logs ; ac:location "S-01 sampai S-30" ; ac:confidence 1.0 .
+  ex:ev-log-2 a ac:Evidence ; ac:about ex:agentKredit ; ac:oldestEntryDays 30 ;
+      ac:fromSource ex:logs ; ac:confidence 1.0 .
+}
+ex:linking {
+  ex:rekomendasiPenolakan owl:sameAs ex:reject_application .
+}
+
+# Lapisan 4: hasil penalaran (otomatis)
+ex:penalaran {
+  ex:agentKredit ac:hasRiskClass ac:HighRisk .     # CreditScoring -> Annex III 5(b) -> HighRisk
+  ac:E03 ac:appliesTo ex:reject_application .      # HighRisk + affectsPerson = true
+  ac:E05 ac:appliesTo ex:agentKredit .
+  ac:E07 ac:appliesTo ex:agentKredit .
+}
+
+# Lapisan 5: assessment (otomatis, lalu human review)
+ex:assessment {
+  ex:CR-1 a ac:ComplianceRisk ; ac:forAgent ex:agentKredit ; ac:forRule ac:E03 ;
+      ac:pattern "Yes-No-No" ; ac:hasRiskLevel ac:Critical ; ac:reviewStatus "Disetujui" ;
+      ac:basedOn ex:ev-doc-2 , ex:ev-code-2 , ex:ev-log-1 .
+  ex:CR-2 a ac:ComplianceRisk ; ac:forAgent ex:agentKredit ; ac:forRule ac:E07 ;
+      ac:pattern "Unknown-No-No" ; ac:hasRiskLevel ac:High ;
+      ac:basedOn ex:ev-code-3 , ex:ev-log-2 .
+  ex:CR-3 a ac:ComplianceRisk ; ac:forAgent ex:agentKredit ; ac:forRule ac:E05 ;
+      ac:pattern "Yes-Unknown-Unknown" ; ac:reviewStatus "Ditutup" ;
+      ac:basedOn ex:ev-doc-3 , ex:ev-rev-1 .
+  ex:ev-rev-1 a ac:Evidence ; ac:about ex:agentKredit ; ac:hasStopControl true ;
+      ac:fromSource ex:reviewer ; ac:confidence 1.0 .
+}

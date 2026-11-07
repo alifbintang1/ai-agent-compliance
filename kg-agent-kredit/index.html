@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KG Agent Kredit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: header, toolbar, then graph canvas beside a detail panel (stacks on phones); legend and TriG source below.
+   Palette: greyscale only, like a black-and-white thesis figure. Line style carries meaning, not colour. */
+:root {
+  --bg: #fbfbfa;
+  --surface: #ffffff;
+  --fg: #1d1e1f;
+  --muted: #5d6063;
+  --line: #8a8d90;
+  --hair: #d9dadb;
+  --reg: #e9eaeb;
+  --ev: #f3f3f2;
+  --cr: #dcdddf;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161718; --surface: #1d1e20; --fg: #ececea; --muted: #a4a7aa; --line: #85888b;
+    --hair: #34363a; --reg: #2b2d30; --ev: #222427; --cr: #3a3c40; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161718; --surface: #1d1e20; --fg: #ececea; --muted: #a4a7aa; --line: #85888b;
+  --hair: #34363a; --reg: #2b2d30; --ev: #222427; --cr: #3a3c40; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.wrap { max-width: 1280px; margin: 0 auto; display: grid; gap: 16px; }
+header h1 { font-size: 1.5rem; font-weight: 600; margin: 0 0 4px; text-wrap: balance; letter-spacing: -0.01em; }
+header p { margin: 0; color: var(--muted); max-width: 72ch; }
+header a, .panel a, .notes a { color: var(--fg); text-underline-offset: 3px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { font: inherit; font-size: 0.875rem; padding: 6px 12px; border: 0; background: var(--surface); color: var(--fg); cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
+.layers { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.875rem; color: var(--muted); }
+.layers label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.btn { font: inherit; font-size: 0.875rem; padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); cursor: pointer; }
+button:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; }
+#cy { min-width: 0; height: clamp(460px, 74vh, 780px); background: var(--surface); border: 1px solid var(--hair); border-radius: 8px; }
+.panel { min-width: 0; background: var(--surface); border: 1px solid var(--hair); border-radius: 8px; padding: 14px 16px; font-size: 0.875rem; overflow-y: auto; max-height: clamp(460px, 74vh, 780px); }
+.panel h2 { font-size: 1rem; margin: 0 0 2px; font-family: var(--font-mono); font-weight: 500; overflow-wrap: anywhere; }
+.panel h2.plain { font-family: var(--font-body); font-weight: 600; }
+.panel .kind { color: var(--muted); font-size: 0.8125rem; margin-bottom: 10px; }
+.panel h3 { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 14px 0 6px; font-weight: 600; }
+.panel dl { display: grid; grid-template-columns: auto 1fr; gap: 3px 10px; margin: 0; }
+.panel dt { color: var(--muted); font-family: var(--font-mono); font-size: 0.8125rem; }
+.panel dd { margin: 0; font-family: var(--font-mono); font-size: 0.8125rem; overflow-wrap: anywhere; }
+.panel ul { margin: 0; padding-left: 18px; }
+.panel li { margin: 2px 0; font-family: var(--font-mono); font-size: 0.8125rem; overflow-wrap: anywhere; }
+.panel ol { margin: 6px 0 0; padding-left: 20px; }
+.panel ol li { font-family: var(--font-body); font-size: 0.875rem; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 0.8125rem; color: var(--muted); align-items: center; }
+.legend span { display: inline-flex; gap: 8px; align-items: center; }
+.legend svg line { stroke: var(--fg); }
+.legend .box { width: 18px; height: 12px; border: 1px solid var(--line); border-radius: 3px; display: inline-block; }
+details { background: var(--surface); border: 1px solid var(--hair); border-radius: 8px; padding: 10px 14px; }
+summary { cursor: pointer; font-weight: 500; }
+.src-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 10px 0 8px; flex-wrap: wrap; color: var(--muted); font-size: 0.8125rem; }
+pre { margin: 0; overflow-x: auto; font-family: var(--font-mono); font-size: 0.78rem; line-height: 1.45; background: var(--ev); padding: 12px; border-radius: 6px; }
+.notes { font-size: 0.8125rem; color: var(--muted); max-width: 80ch; }
+@media (max-width: 860px) {
+  .stage { grid-template-columns: minmax(0, 1fr); }
+  .panel { max-height: none; }
+}
+</style>
+<style>
+html { color-scheme: light; }
+@media (prefers-color-scheme: dark) { html { color-scheme: dark; } }
+body { margin: 0; }
+[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+
+
+<div class="wrap">
+  <header>
+    <h1>KG Agent Kredit</h1>
+    <p>Contoh knowledge graph untuk agent penyaringan kredit (fiktif). Klik node untuk melihat isi dan asal faktanya. Penjelasan lengkapnya ada di tab <a href="https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.1109wlwv2eut" target="_blank" rel="noopener">KG Extraction</a>, dan isi file agent-nya di tab <a href="https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.shvnlab9fhcq" target="_blank" rel="noopener">Example 1</a>.</p>
+  </header>
+
+  <div class="toolbar">
+    <div class="seg" role="group" aria-label="Tampilan">
+      <button type="button" id="v-agent" aria-pressed="true">Agent kredit (lapisan 2–5)</button>
+      <button type="button" id="v-onto" aria-pressed="false">Ontology (lapisan 1)</button>
+    </div>
+    <div class="layers" id="layerbox">
+      <label><input type="checkbox" id="l2" checked> Lapisan 2 · regulasi</label>
+      <label><input type="checkbox" id="l3" checked> Lapisan 3 · agent</label>
+      <label><input type="checkbox" id="l4" checked> Lapisan 4 · penalaran</label>
+      <label><input type="checkbox" id="l5" checked> Lapisan 5 · assessment</label>
+    </div>
+    <button type="button" class="btn" id="fit">Tampilkan semua</button>
+  </div>
+
+  <div class="stage">
+    <div id="cy" role="img" aria-label="Graf knowledge graph agent kredit"></div>
+    <aside class="panel" id="panel" aria-live="polite"></aside>
+  </div>
+
+  <div class="legend">
+    <span><svg width="38" height="10" aria-hidden="true"><line x1="0" y1="5" x2="38" y2="5" stroke-width="1.5"/></svg>fakta dari extraction atau catalog</span>
+    <span><svg width="38" height="10" aria-hidden="true"><line x1="0" y1="5" x2="38" y2="5" stroke-width="1.8" stroke-dasharray="6 4"/></svg>hasil penalaran (lapisan 4)</span>
+    <span><svg width="38" height="10" aria-hidden="true"><line x1="0" y1="5" x2="38" y2="5" stroke-width="2.2" stroke-dasharray="1.5 3.5" stroke-linecap="round"/></svg>entity linking (sameAs)</span>
+    <span><i class="box" style="background:var(--reg)"></i>regulasi</span>
+    <span><i class="box" style="background:var(--surface);border:2px solid var(--fg)"></i>agent / tool</span>
+    <span><i class="box" style="background:var(--ev)"></i>evidence</span>
+    <span><i class="box" style="background:var(--cr);border:2px solid var(--fg)"></i>compliance risk</span>
+  </div>
+
+  <details>
+    <summary>File TriG (semua lapisan, 8 named graph)</summary>
+    <div class="src-head"><span>agent_kredit_kg.trig · 185 triple · format TriG (Turtle + named graph)</span><span style="display:inline-flex;gap:8px"><a class="btn" href="agent_kredit_kg.trig" download style="text-decoration:none">Unduh .trig</a><button type="button" class="btn" id="copy">Salin</button></span></div>
+    <pre id="trig"># Contoh KG agent kredit (fiktif). Format TriG: satu named graph per lapisan atau source.
+@prefix ac:   &lt;https://example.org/agent-compliance#&gt; .
+@prefix ex:   &lt;https://example.org/agent-kredit#&gt; .
+@prefix owl:  &lt;http://www.w3.org/2002/07/owl#&gt; .
+@prefix rdfs: &lt;http://www.w3.org/2000/01/rdf-schema#&gt; .
+@prefix xsd:  &lt;http://www.w3.org/2001/XMLSchema#&gt; .
+
+# Lapisan 1: ontology (dibuat sekali)
+ac:ontology {
+  ac:Framework a owl:Class .
+  ac:Rule a owl:Class .
+  ac:RiskClass a owl:Class .
+  ac:UseArea a owl:Class .
+  ac:Purpose a owl:Class .
+  ac:ComplianceRisk a owl:Class .
+  ac:RiskLevel a owl:Class .
+  ac:Agent a owl:Class .
+  ac:Tool a owl:Class .
+  ac:Evidence a owl:Class .
+  ac:Action a owl:Class .
+  ac:Approval a owl:Class .
+  ac:Source a owl:Class .
+  ac:Documentation a owl:Class .
+  ac:Code a owl:Class .
+  ac:Log a owl:Class .
+  ac:fromFramework a owl:ObjectProperty ; rdfs:domain ac:Rule ; rdfs:range ac:Framework .
+  ac:appliesToRiskClass a owl:ObjectProperty ; rdfs:domain ac:Rule ; rdfs:range ac:RiskClass .
+  ac:appliesTo a owl:ObjectProperty ; rdfs:domain ac:Rule ; rdfs:range ac:Tool .
+  ac:impliesRiskClass a owl:ObjectProperty ; rdfs:domain ac:UseArea ; rdfs:range ac:RiskClass .
+  ac:coversPurpose a owl:ObjectProperty ; rdfs:domain ac:UseArea ; rdfs:range ac:Purpose .
+  ac:hasPurpose a owl:ObjectProperty ; rdfs:domain ac:Agent ; rdfs:range ac:Purpose .
+  ac:hasRiskClass a owl:ObjectProperty ; rdfs:domain ac:Agent ; rdfs:range ac:RiskClass .
+  ac:hasTool a owl:ObjectProperty ; rdfs:domain ac:Agent ; rdfs:range ac:Tool .
+  ac:callsTool a owl:ObjectProperty ; rdfs:domain ac:Action ; rdfs:range ac:Tool .
+  ac:hasApproval a owl:ObjectProperty ; rdfs:domain ac:Action ; rdfs:range ac:Approval .
+  ac:about a owl:ObjectProperty ; rdfs:domain ac:Evidence ; rdfs:range ac:Tool .
+  ac:about a owl:ObjectProperty ; rdfs:domain ac:Evidence ; rdfs:range ac:Agent .
+  ac:fromSource a owl:ObjectProperty ; rdfs:domain ac:Evidence ; rdfs:range ac:Source .
+  ac:Documentation rdfs:subClassOf ac:Source .
+  ac:Code rdfs:subClassOf ac:Source .
+  ac:Log rdfs:subClassOf ac:Source .
+  ac:forRule a owl:ObjectProperty ; rdfs:domain ac:ComplianceRisk ; rdfs:range ac:Rule .
+  ac:forAgent a owl:ObjectProperty ; rdfs:domain ac:ComplianceRisk ; rdfs:range ac:Agent .
+  ac:basedOn a owl:ObjectProperty ; rdfs:domain ac:ComplianceRisk ; rdfs:range ac:Evidence .
+  ac:hasRiskLevel a owl:ObjectProperty ; rdfs:domain ac:ComplianceRisk ; rdfs:range ac:RiskLevel .
+}
+
+# Lapisan 2: regulasi (dari catalog, dibuat sekali)
+ac:regulasi {
+  ac:EUAIAct a ac:Framework .
+  ac:HighRisk a ac:RiskClass .
+  ac:CreditScoring a ac:Purpose .
+  ac:AnnexIII_5b a ac:UseArea ; ac:coversPurpose ac:CreditScoring ; ac:impliesRiskClass ac:HighRisk .
+  ac:E03 a ac:Rule ; ac:fromFramework ac:EUAIAct ; ac:appliesToRiskClass ac:HighRisk ;
+      ac:article "14(1), 14(3), 14(4)(d); 26(1)" ; ac:checks "requiresApproval pada tool dengan affectsPerson = true" .
+  ac:E05 a ac:Rule ; ac:fromFramework ac:EUAIAct ; ac:appliesToRiskClass ac:HighRisk ;
+      ac:article "14(4)(e)" ; ac:checks "ada cara manusia menghentikan agent" .
+  ac:E07 a ac:Rule ; ac:fromFramework ac:EUAIAct ; ac:appliesToRiskClass ac:HighRisk ;
+      ac:article "19(1); 26(6)" ; ac:checks "logRetentionDays &gt;= 183" .
+}
+
+# Lapisan 3: agent, satu named graph per source (dibuat otomatis per agent)
+ex:code {
+  ex:agentKredit a ac:Agent ; ac:hasTool ex:get_application , ex:score_credit , ex:reject_application ,
+      ex:forward_to_officer , ex:send_decision .
+  ex:get_application a ac:Tool .
+  ex:score_credit a ac:Tool .
+  ex:reject_application a ac:Tool .
+  ex:forward_to_officer a ac:Tool .
+  ex:send_decision a ac:Tool .
+  ex:ev-code-1 a ac:Evidence ; ac:about ex:reject_application ; ac:affectsPerson true ;
+      ac:fromSource ex:agent.yaml ; ac:location "baris 32" ; ac:confidence 1.0 .
+  ex:ev-code-2 a ac:Evidence ; ac:about ex:reject_application ; ac:requiresApproval false ;
+      ac:fromSource ex:agent.yaml ; ac:location "baris 34" ; ac:confidence 1.0 .
+  ex:ev-code-3 a ac:Evidence ; ac:about ex:agentKredit ; ac:logRetentionDays 30 ;
+      ac:fromSource ex:agent.yaml ; ac:location "baris 51" ; ac:confidence 1.0 .
+}
+ex:documentation {
+  ex:agentKredit ac:hasPurpose ac:CreditScoring .
+  ex:ev-doc-1 a ac:Evidence ; ac:about ex:agentKredit ; ac:purpose ac:CreditScoring ;
+      ac:fromSource ex:deskripsi.md ; ac:confidence 0.95 .
+  ex:rekomendasiPenolakan a ac:Tool .
+  ex:ev-doc-2 a ac:Evidence ; ac:about ex:rekomendasiPenolakan ; ac:requiresApproval true ;
+      ac:fromSource ex:manual.pdf ; ac:location "hlm. 12" ; ac:confidence 0.92 .
+  ex:ev-doc-3 a ac:Evidence ; ac:about ex:agentKredit ; ac:hasStopControl true ;
+      ac:fromSource ex:manual.pdf ; ac:location "hlm. 15" ; ac:confidence 0.90 .
+}
+ex:log {
+  ex:A-881 a ac:Action ; ac:callsTool ex:reject_application ; ac:inSession ex:S-07 ;
+      ac:atTime "10:42:04" .   # tidak ada ac:hasApproval
+  # ... 56 action reject_application lain di sesi S-01 sampai S-30, juga tanpa ac:hasApproval
+  ex:ev-log-1 a ac:Evidence ; ac:about ex:reject_application ; ac:actionsWithoutApproval 57 ;
+      ac:fromSource ex:logs ; ac:location "S-01 sampai S-30" ; ac:confidence 1.0 .
+  ex:ev-log-2 a ac:Evidence ; ac:about ex:agentKredit ; ac:oldestEntryDays 30 ;
+      ac:fromSource ex:logs ; ac:confidence 1.0 .
+}
+ex:linking {
+  ex:rekomendasiPenolakan owl:sameAs ex:reject_application .
+}
+
+# Lapisan 4: hasil penalaran (otomatis)
+ex:penalaran {
+  ex:agentKredit ac:hasRiskClass ac:HighRisk .     # CreditScoring -&gt; Annex III 5(b) -&gt; HighRisk
+  ac:E03 ac:appliesTo ex:reject_application .      # HighRisk + affectsPerson = true
+  ac:E05 ac:appliesTo ex:agentKredit .
+  ac:E07 ac:appliesTo ex:agentKredit .
+}
+
+# Lapisan 5: assessment (otomatis, lalu human review)
+ex:assessment {
+  ex:CR-1 a ac:ComplianceRisk ; ac:forAgent ex:agentKredit ; ac:forRule ac:E03 ;
+      ac:pattern "Yes-No-No" ; ac:hasRiskLevel ac:Critical ; ac:reviewStatus "Disetujui" ;
+      ac:basedOn ex:ev-doc-2 , ex:ev-code-2 , ex:ev-log-1 .
+  ex:CR-2 a ac:ComplianceRisk ; ac:forAgent ex:agentKredit ; ac:forRule ac:E07 ;
+      ac:pattern "Unknown-No-No" ; ac:hasRiskLevel ac:High ;
+      ac:basedOn ex:ev-code-3 , ex:ev-log-2 .
+  ex:CR-3 a ac:ComplianceRisk ; ac:forAgent ex:agentKredit ; ac:forRule ac:E05 ;
+      ac:pattern "Yes-Unknown-Unknown" ; ac:reviewStatus "Ditutup" ;
+      ac:basedOn ex:ev-doc-3 , ex:ev-rev-1 .
+  ex:ev-rev-1 a ac:Evidence ; ac:about ex:agentKredit ; ac:hasStopControl true ;
+      ac:fromSource ex:reviewer ; ac:confidence 1.0 .
+}
+</pre>
+  </details>
+
+  <p class="notes">Semua isi fiktif dan disederhanakan: di KG sebenarnya setiap 57 action punya node sendiri, di sini hanya A-881 yang digambar. Lapisan 1 dan 2 dibuat sekali untuk semua agent; lapisan 3 sampai 5 dibuat untuk tiap agent.</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
+<script>
+const DATA = {"nodes": [{"id": "EUAIAct", "label": "EU AI Act", "layer": 2, "kind": "reg", "x": -230, "y": 120, "props": {"type": "Framework"}, "src": "catalog", "link": "https://docs.google.com/spreadsheets/d/1rGUsD9JC93WJP5CgWiHE0jznr0xsUJ3JxEALsPJgL1s/edit"}, {"id": "E03", "label": "E03\napproval sebelum action\nyang memutus nasib orang", "layer": 2, "kind": "reg", "x": 0, "y": 210, "props": {"type": "Rule", "article": "Article 14(1), 14(3), 14(4)(d); 26(1)", "appliesToRiskClass": "HighRisk", "checks": "requiresApproval pada tool dengan affectsPerson = true"}, "src": "catalog baris E03", "link": "https://docs.google.com/spreadsheets/d/1rGUsD9JC93WJP5CgWiHE0jznr0xsUJ3JxEALsPJgL1s/edit#gid=1&range=A4:R4"}, {"id": "E07", "label": "E07\nlog disimpan minimal 6 bulan", "layer": 2, "kind": "reg", "x": 0, "y": 330, "props": {"type": "Rule", "article": "Article 19(1); 26(6)", "appliesToRiskClass": "HighRisk", "checks": "logRetentionDays >= 183"}, "src": "catalog baris E07", "link": "https://docs.google.com/spreadsheets/d/1rGUsD9JC93WJP5CgWiHE0jznr0xsUJ3JxEALsPJgL1s/edit#gid=1&range=A8:R8"}, {"id": "E05", "label": "E05\nagent bisa dihentikan manusia", "layer": 2, "kind": "reg", "x": 0, "y": 450, "props": {"type": "Rule", "article": "Article 14(4)(e)", "appliesToRiskClass": "HighRisk", "checks": "ada cara manusia menghentikan agent"}, "src": "catalog baris E05", "link": "https://docs.google.com/spreadsheets/d/1rGUsD9JC93WJP5CgWiHE0jznr0xsUJ3JxEALsPJgL1s/edit#gid=1&range=A6:R6"}, {"id": "HighRisk", "label": "HighRisk", "layer": 2, "kind": "reg", "x": -230, "y": 430, "props": {"type": "RiskClass"}, "src": "catalog baris E01", "link": "https://docs.google.com/spreadsheets/d/1rGUsD9JC93WJP5CgWiHE0jznr0xsUJ3JxEALsPJgL1s/edit#gid=1&range=A2:R2"}, {"id": "AnnexIII_5b", "label": "Annex III poin 5(b)", "layer": 2, "kind": "reg", "x": -230, "y": 590, "props": {"type": "UseArea", "coversPurpose": "CreditScoring", "impliesRiskClass": "HighRisk"}, "src": "catalog baris E01", "link": "https://docs.google.com/spreadsheets/d/1rGUsD9JC93WJP5CgWiHE0jznr0xsUJ3JxEALsPJgL1s/edit#gid=1&range=A2:R2"}, {"id": "CreditScoring", "label": "CreditScoring", "layer": 2, "kind": "reg", "x": -230, "y": 730, "props": {"type": "Purpose"}, "src": "catalog baris E01", "link": "https://docs.google.com/spreadsheets/d/1rGUsD9JC93WJP5CgWiHE0jznr0xsUJ3JxEALsPJgL1s/edit#gid=1&range=A2:R2"}, {"id": "agentKredit", "label": "agentKredit", "layer": 3, "kind": "agent", "x": 200, "y": 660, "props": {"type": "Agent"}, "src": "agent.yaml baris 1-4, 15-46", "link": "https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.shvnlab9fhcq#heading=h.npzlews4cqwj"}, {"id": "get_application", "label": "get_application", "layer": 3, "kind": "tool", "x": 420, "y": 0, "props": {"type": "Tool"}, "src": "agent.yaml baris 16", "link": "https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.shvnlab9fhcq#heading=h.npzlews4cqwj"}, {"id": "score_credit", "label": "score_credit", "layer": 3, "kind": "tool", "x": 420, "y": 95, "props": {"type": "Tool"}, "src": "agent.yaml baris 22", "link": "https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.shvnlab9fhcq#heading=h.npzlews4cqwj"}, {"id": "reject_application", "label": "reject_application", "layer": 3, "kind": "tool", "x": 420, "y": 230, "props": {"type": "Tool"}, "src": "agent.yaml baris 28", "link": "https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.shvnlab9fhcq#heading=h.npzlews4cqwj"}, {"id": "forward_to_officer", "label": "forward_to_officer", "layer": 3, "kind": "tool", "x": 420, "y": 380, "props": {"type": "Tool"}, "src": "agent.yaml baris 36", "link": "https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.shvnlab9fhcq#heading=h.npzlews4cqwj"}, {"id": "send_decision", "label": "send_decision", "layer": 3, "kind": "tool", "x": 420, "y": 475, "props": {"type": "Tool"}, "src": "agent.yaml baris 42", "link": "https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.shvnlab9fhcq#heading=h.npzlews4cqwj"}, {"id": "ev_doc_2", "label": "ev-doc-2 · documentation\nmanual hlm. 12\nrequiresApproval = true", "layer": 3, "kind": "ev", "x": 820, "y": 70, "props": {"type": "Evidence", "fromSource": "manual.pdf", "location": "hlm. 12", "requiresApproval": "true", "confidence": "0.92"}, "src": "manual hlm. 12", "link": "https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.shvnlab9fhcq#heading=h.at7yw0z7e3i"}, {"id": "rekomendasiPenolakan", "label": "rekomendasiPenolakan\n(nama tool di manual)", "layer": 3, "kind": "tool", "x": 820, "y": 170, "props": {"type": "Tool", "catatan": "nama dari manual, disatukan ke reject_application"}, "src": "manual hlm. 12", "link": "https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.shvnlab9fhcq#heading=h.at7yw0z7e3i"}, {"id": "ev_code_1", "label": "ev-code-1 · code\nagent.yaml baris 32\naffectsPerson = true", "layer": 3, "kind": "ev", "x": 820, "y": 275, "props": {"type": "Evidence", "fromSource": "agent.yaml", "location": "baris 32", "affectsPerson": "true", "confidence": "1.0"}, "src": "agent.yaml baris 32", "link": "https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.shvnlab9fhcq#heading=h.npzlews4cqwj"}, {"id": "ev_code_2", "label": "ev-code-2 · code\nagent.yaml baris 34\nrequiresApproval = false", "layer": 3, "kind": "ev", "x": 820, "y": 375, "props": {"type": "Evidence", "fromSource": "agent.yaml", "location": "baris 34", "requiresApproval": "false", "confidence": "1.0"}, "src": "agent.yaml baris 34", "link": "https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.shvnlab9fhcq#heading=h.npzlews4cqwj"}, {"id": "A_881", "label": "A-881 · log\nS-07 10:42:04\ncall reject_application\n(tanpa approval)", "layer": 3, "kind": "ev", "x": 820, "y": 485, "props": {"type": "Action", "inSession": "S-07", "atTime": "10:42:04", "callsTool": "reject_application", "hasApproval": "(tidak ada)"}, "src": "logs/S-07.log", "link": "https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.shvnlab9fhcq#heading=h.cfh2q6sa9i6h"}, {"id": "ev_log_1", "label": "ev-log-1 · log\nS-01 sampai S-30\n57 action tanpa approval", "layer": 3, "kind": "ev", "x": 820, "y": 595, "props": {"type": "Evidence", "fromSource": "logs/S-01..S-30", "actionsWithoutApproval": "57", "confidence": "1.0"}, "src": "logs S-01 sampai S-30", "link": "https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.shvnlab9fhcq#heading=h.cfh2q6sa9i6h"}, {"id": "ev_doc_1", "label": "ev-doc-1 · documentation\ndeskripsi.md\npurpose = CreditScoring", "layer": 3, "kind": "ev", "x": 820, "y": 720, "props": {"type": "Evidence", "fromSource": "deskripsi.md", "purpose": "CreditScoring", "confidence": "0.95"}, "src": "deskripsi.md", "link": "https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.shvnlab9fhcq#heading=h.blwzb6r3j4a1"}, {"id": "ev_doc_3", "label": "ev-doc-3 · documentation\nmanual hlm. 15\nada tombol Stop", "layer": 3, "kind": "ev", "x": 820, "y": 820, "props": {"type": "Evidence", "fromSource": "manual.pdf", "location": "hlm. 15", "hasStopControl": "true", "confidence": "0.90"}, "src": "manual hlm. 15", "link": "https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.shvnlab9fhcq#heading=h.at7yw0z7e3i"}, {"id": "ev_code_3", "label": "ev-code-3 · code\nagent.yaml baris 51\nlogRetentionDays = 30", "layer": 3, "kind": "ev", "x": 820, "y": 920, "props": {"type": "Evidence", "fromSource": "agent.yaml", "location": "baris 51", "logRetentionDays": "30", "confidence": "1.0"}, "src": "agent.yaml baris 51", "link": "https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.shvnlab9fhcq#heading=h.npzlews4cqwj"}, {"id": "ev_log_2", "label": "ev-log-2 · log\nentri tertua 30 hari", "layer": 3, "kind": "ev", "x": 820, "y": 1020, "props": {"type": "Evidence", "fromSource": "logs/S-01..S-30", "oldestEntryDays": "30", "confidence": "1.0"}, "src": "logs S-01 sampai S-30", "link": "https://docs.google.com/document/d/1UYt_hxf0pP38bekCA1Xe1qXFklrW2A2LPMdDYL5-9Ak/edit?tab=t.shvnlab9fhcq#heading=h.cfh2q6sa9i6h"}, {"id": "CR1", "label": "CR-1 · E03\nYes–No–No\nCritical · disetujui", "layer": 5, "kind": "cr", "x": 1230, "y": 375, "props": {"type": "ComplianceRisk", "forRule": "E03", "pattern": "Yes–No–No", "riskLevel": "Critical", "reviewStatus": "Disetujui"}, "src": "hasil check", "link": null}, {"id": "CR3", "label": "CR-3 · E05\nYes–Unknown–Unknown\nditutup setelah review", "layer": 5, "kind": "cr", "x": 1230, "y": 820, "props": {"type": "ComplianceRisk", "forRule": "E05", "pattern": "Yes–Unknown–Unknown", "riskLevel": "-", "reviewStatus": "Ditutup"}, "src": "hasil check", "link": null}, {"id": "CR2", "label": "CR-2 · E07\nUnknown–No–No\nHigh", "layer": 5, "kind": "cr", "x": 1230, "y": 975, "props": {"type": "ComplianceRisk", "forRule": "E07", "pattern": "Unknown–No–No", "riskLevel": "High", "reviewStatus": "Menunggu"}, "src": "hasil check", "link": null}, {"id": "ev_rev_1", "label": "ev-rev-1 · reviewer\ntombol Stop ada\ndi dashboard", "layer": 5, "kind": "ev", "x": 1230, "y": 660, "props": {"type": "Evidence", "fromSource": "reviewer", "hasStopControl": "true", "confidence": "1.0"}, "src": "human review", "link": null}], "edges": [{"source": "E03", "target": "EUAIAct", "label": "fromFramework", "kind": "fact", "layer": 2}, {"source": "E07", "target": "EUAIAct", "label": "fromFramework", "kind": "fact", "layer": 2}, {"source": "E05", "target": "EUAIAct", "label": "fromFramework", "kind": "fact", "layer": 2}, {"source": "E03", "target": "HighRisk", "label": "appliesToRiskClass", "kind": "fact", "layer": 2}, {"source": "E07", "target": "HighRisk", "label": "appliesToRiskClass", "kind": "fact", "layer": 2}, {"source": "E05", "target": "HighRisk", "label": "appliesToRiskClass", "kind": "fact", "layer": 2}, {"source": "AnnexIII_5b", "target": "HighRisk", "label": "impliesRiskClass", "kind": "fact", "layer": 2}, {"source": "AnnexIII_5b", "target": "CreditScoring", "label": "coversPurpose", "kind": "fact", "layer": 2}, {"source": "agentKredit", "target": "get_application", "label": "hasTool", "kind": "fact", "layer": 3}, {"source": "agentKredit", "target": "score_credit", "label": "hasTool", "kind": "fact", "layer": 3}, {"source": "agentKredit", "target": "reject_application", "label": "hasTool", "kind": "fact", "layer": 3}, {"source": "agentKredit", "target": "forward_to_officer", "label": "hasTool", "kind": "fact", "layer": 3}, {"source": "agentKredit", "target": "send_decision", "label": "hasTool", "kind": "fact", "layer": 3}, {"source": "ev_doc_2", "target": "rekomendasiPenolakan", "label": "about", "kind": "fact", "layer": 3}, {"source": "ev_code_1", "target": "reject_application", "label": "about", "kind": "fact", "layer": 3}, {"source": "ev_code_2", "target": "reject_application", "label": "about", "kind": "fact", "layer": 3}, {"source": "A_881", "target": "reject_application", "label": "callsTool", "kind": "fact", "layer": 3}, {"source": "ev_log_1", "target": "reject_application", "label": "about", "kind": "fact", "layer": 3}, {"source": "ev_doc_1", "target": "agentKredit", "label": "about", "kind": "fact", "layer": 3}, {"source": "ev_doc_3", "target": "agentKredit", "label": "about", "kind": "fact", "layer": 3}, {"source": "ev_code_3", "target": "agentKredit", "label": "about", "kind": "fact", "layer": 3}, {"source": "ev_log_2", "target": "agentKredit", "label": "about", "kind": "fact", "layer": 3}, {"source": "agentKredit", "target": "CreditScoring", "label": "hasPurpose", "kind": "fact", "layer": 3}, {"source": "rekomendasiPenolakan", "target": "reject_application", "label": "sameAs", "kind": "linking", "layer": 3}, {"source": "agentKredit", "target": "HighRisk", "label": "hasRiskClass", "kind": "inferred", "layer": 4}, {"source": "E03", "target": "reject_application", "label": "appliesTo", "kind": "inferred", "layer": 4}, {"source": "E07", "target": "agentKredit", "label": "appliesTo", "kind": "inferred", "layer": 4}, {"source": "E05", "target": "agentKredit", "label": "appliesTo", "kind": "inferred", "layer": 4}, {"source": "CR1", "target": "ev_doc_2", "label": "basedOn", "kind": "fact", "layer": 5}, {"source": "CR1", "target": "ev_code_2", "label": "basedOn", "kind": "fact", "layer": 5}, {"source": "CR1", "target": "ev_log_1", "label": "basedOn", "kind": "fact", "layer": 5}, {"source": "CR2", "target": "ev_code_3", "label": "basedOn", "kind": "fact", "layer": 5}, {"source": "CR2", "target": "ev_log_2", "label": "basedOn", "kind": "fact", "layer": 5}, {"source": "CR3", "target": "ev_doc_3", "label": "basedOn", "kind": "fact", "layer": 5}, {"source": "CR3", "target": "ev_rev_1", "label": "basedOn", "kind": "fact", "layer": 5}, {"source": "ev_rev_1", "target": "agentKredit", "label": "about", "kind": "fact", "layer": 5}], "headers": [{"id": "h2", "label": "Lapisan 2 · Regulasi\n(dari catalog)", "x": -120, "y": -110}, {"id": "h3a", "label": "Lapisan 3 · Agent dan tool\n(dari code)", "x": 310, "y": -110}, {"id": "h3b", "label": "Lapisan 3 · Evidence\n(documentation, code, log)", "x": 820, "y": -110}, {"id": "h5", "label": "Lapisan 5 · Assessment", "x": 1230, "y": -110}], "onto": {"nodes": [{"id": "Framework", "x": -200, "y": 0}, {"id": "Rule", "x": 50, "y": 0}, {"id": "RiskClass", "x": 300, "y": 0}, {"id": "UseArea", "x": 550, "y": 0}, {"id": "Purpose", "x": 800, "y": 0}, {"id": "ComplianceRisk", "x": -200, "y": 230}, {"id": "RiskLevel", "x": -200, "y": 420}, {"id": "Agent", "x": 550, "y": 230}, {"id": "Tool", "x": 300, "y": 330}, {"id": "Evidence", "x": 50, "y": 420}, {"id": "Action", "x": 550, "y": 470}, {"id": "Approval", "x": 800, "y": 470}, {"id": "Source", "x": 50, "y": 640}, {"id": "Documentation", "x": -200, "y": 800}, {"id": "Code", "x": 50, "y": 800}, {"id": "Log", "x": 300, "y": 800}], "edges": [{"source": "Rule", "target": "Framework", "label": "fromFramework"}, {"source": "Rule", "target": "RiskClass", "label": "appliesToRiskClass"}, {"source": "Rule", "target": "Tool", "label": "appliesTo *"}, {"source": "UseArea", "target": "RiskClass", "label": "impliesRiskClass"}, {"source": "UseArea", "target": "Purpose", "label": "coversPurpose"}, {"source": "Agent", "target": "Purpose", "label": "hasPurpose"}, {"source": "Agent", "target": "RiskClass", "label": "hasRiskClass *"}, {"source": "Agent", "target": "Tool", "label": "hasTool"}, {"source": "Action", "target": "Tool", "label": "callsTool"}, {"source": "Action", "target": "Approval", "label": "hasApproval"}, {"source": "Evidence", "target": "Tool", "label": "about"}, {"source": "Evidence", "target": "Agent", "label": "about"}, {"source": "Evidence", "target": "Source", "label": "fromSource"}, {"source": "Documentation", "target": "Source", "label": "subClassOf"}, {"source": "Code", "target": "Source", "label": "subClassOf"}, {"source": "Log", "target": "Source", "label": "subClassOf"}, {"source": "ComplianceRisk", "target": "Rule", "label": "forRule"}, {"source": "ComplianceRisk", "target": "Agent", "label": "forAgent"}, {"source": "ComplianceRisk", "target": "Evidence", "label": "basedOn"}, {"source": "ComplianceRisk", "target": "RiskLevel", "label": "hasRiskLevel"}]}};
+const LAYER_NAME = {1: "Lapisan 1 · ontology", 2: "Lapisan 2 · regulasi", 3: "Lapisan 3 · agent", 4: "Lapisan 4 · penalaran", 5: "Lapisan 5 · assessment"};
+const KIND_NAME = {reg: "regulasi", agent: "agent", tool: "tool", ev: "evidence", cr: "compliance risk"};
+const panel = document.getElementById("panel");
+let view = "agent";
+
+function tok(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c])); }
+
+function styleSheet() {
+  const fg = tok("--fg"), bg = tok("--surface"), muted = tok("--muted"), line = tok("--line");
+  const reg = tok("--reg"), ev = tok("--ev"), cr = tok("--cr");
+  const font = 'IBM Plex Sans, Segoe UI, sans-serif';
+  return [
+    { selector: "node", style: { "label": "data(label)", "text-wrap": "wrap", "text-max-width": 260, "font-family": font,
+        "font-size": 15, "color": fg, "text-valign": "center", "text-halign": "center", "shape": "round-rectangle",
+        "width": "label", "height": "label", "padding": "9px", "background-color": bg, "border-width": 1, "border-color": line } },
+    { selector: "node[kind='reg']", style: { "background-color": reg } },
+    { selector: "node[kind='agent']", style: { "shape": "rectangle", "border-width": 2.5, "border-color": fg, "font-weight": 600, "font-size": 17 } },
+    { selector: "node[kind='tool']", style: { "shape": "rectangle", "border-width": 1.5, "border-color": fg, "font-family": "IBM Plex Mono, Consolas, monospace", "font-size": 15 } },
+    { selector: "node[kind='ev']", style: { "background-color": ev, "font-size": 13.5, "text-justification": "left" } },
+    { selector: "node[kind='cr']", style: { "background-color": cr, "border-width": 2, "border-color": fg, "font-weight": 600 } },
+    { selector: "node[kind='head']", style: { "background-opacity": 0, "border-width": 0, "color": muted, "font-size": 16, "font-weight": 600, "events": "no" } },
+    { selector: "node[kind='class']", style: { "background-color": bg, "border-width": 1.5, "border-color": fg, "font-size": 16, "font-weight": 500 } },
+    { selector: "edge", style: { "width": 1.2, "line-color": line, "target-arrow-color": line, "target-arrow-shape": "triangle", "arrow-scale": 0.8,
+        "curve-style": "bezier", "label": "data(label)", "font-size": 12, "font-family": "IBM Plex Mono, Consolas, monospace", "color": muted,
+        "text-rotation": "autorotate", "text-background-color": bg, "text-background-opacity": 0.92, "text-background-padding": "2px" } },
+    { selector: "edge[kind='inferred']", style: { "line-style": "dashed", "line-dash-pattern": [6, 4], "width": 1.8, "line-color": fg, "target-arrow-color": fg } },
+    { selector: "edge[kind='linking']", style: { "line-style": "dotted", "width": 2.2, "line-color": fg, "target-arrow-color": fg } },
+    { selector: ".faded", style: { "opacity": 0.12 } },
+    { selector: "node:selected", style: { "border-width": 3, "border-color": fg } },
+  ];
+}
+
+function agentElements() {
+  const els = [];
+  DATA.headers.forEach(h => els.push({ group: "nodes", data: { id: h.id, label: h.label, kind: "head" }, position: { x: h.x, y: h.y }, selectable: false, grabbable: false }));
+  DATA.nodes.forEach(n => els.push({ group: "nodes", data: { id: n.id, label: n.label, kind: n.kind, layer: n.layer }, position: { x: n.x, y: n.y } }));
+  DATA.edges.forEach((e, i) => els.push({ group: "edges", data: { id: "e" + i, source: e.source, target: e.target, label: e.label, kind: e.kind, layer: e.layer } }));
+  return els;
+}
+function ontoElements() {
+  const els = [];
+  DATA.onto.nodes.forEach(n => els.push({ group: "nodes", data: { id: n.id, label: n.id, kind: "class" }, position: { x: n.x, y: n.y } }));
+  DATA.onto.edges.forEach((e, i) => els.push({ group: "edges", data: { id: "o" + i, source: e.source, target: e.target, label: e.label, kind: e.label.endsWith("*") ? "inferred" : "fact" } }));
+  return els;
+}
+
+const cy = cytoscape({ container: document.getElementById("cy"), elements: agentElements(), style: styleSheet(),
+  layout: { name: "preset" }, minZoom: 0.2, maxZoom: 2.5, wheelSensitivity: 0.25, boxSelectionEnabled: false });
+
+function fit() { cy.fit(cy.elements(":visible"), 24); }
+
+function defaultPanel() {
+  if (view === "onto") {
+    panel.innerHTML = `<h2 class="plain">Ontology</h2><div class="kind">${LAYER_NAME[1]}</div>
+      <p>Class dan hubungan yang boleh dipakai di KG. Term di tab Glosarium menjadi class di sini. Dibuat sekali dan dipakai untuk semua agent.</p>
+      <p>Hubungan bertanda * tidak diisi dari source, tapi disimpulkan di lapisan 4.</p>
+      <p>Klik sebuah class untuk melihat hubungannya.</p>`;
+    return;
+  }
+  panel.innerHTML = `<h2 class="plain">Cara membaca</h2><div class="kind">Klik node untuk detail. Klik area kosong untuk kembali.</div>
+    <ol>
+      <li><b>Lapisan 2</b> (kiri): rule dari catalog dan kapan rule berlaku.</li>
+      <li><b>Lapisan 3</b> (tengah): agent, tool, dan evidence dari documentation, code, dan log. Evidence ditaruh dekat tool yang dibicarakannya.</li>
+      <li><b>Lapisan 4</b> (garis putus-putus): fakta yang disimpulkan, misalnya agent ini high-risk dan E03 berlaku untuk reject_application.</li>
+      <li><b>Lapisan 5</b> (kanan): compliance risk beserta evidence yang mendasarinya, dan evidence dari reviewer.</li>
+    </ol>
+    <h3>Yang perlu diperhatikan</h3>
+    <p>reject_application menerima tiga evidence yang bertentangan: manual bilang ada approval, agent.yaml bilang tidak, dan log menunjukkan 57 action tanpa approval. Karena itu CR-1 bernilai Yes–No–No.</p>`;
+}
+
+function showNode(node) {
+  const id = node.id();
+  const out = node.outgoers("edge:visible").map(e => `${e.data("label")} → ${e.target().id()}`);
+  const inc = node.incomers("edge:visible").map(e => `${e.source().id()} → ${e.data("label")}`);
+  if (view === "onto") {
+    panel.innerHTML = `<h2>${esc(id)}</h2><div class="kind">class · ${LAYER_NAME[1]}</div>
+      <h3>Keluar</h3>${out.length ? "<ul>" + out.map(s => `<li>${esc(s)}</li>`).join("") + "</ul>" : "<p>-</p>"}
+      <h3>Masuk</h3>${inc.length ? "<ul>" + inc.map(s => `<li>${esc(s)}</li>`).join("") + "</ul>" : "<p>-</p>"}`;
+    return;
+  }
+  const n = DATA.nodes.find(x => x.id === id);
+  if (!n) return;
+  const props = Object.entries(n.props).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("");
+  const src = n.link ? `<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.src)}</a>` : esc(n.src);
+  panel.innerHTML = `<h2>${esc(id)}</h2><div class="kind">${KIND_NAME[n.kind]} · ${LAYER_NAME[n.layer]}</div>
+    <h3>Asal fakta</h3><p>${src}</p>
+    <h3>Isi</h3><dl>${props}</dl>
+    <h3>Keluar</h3>${out.length ? "<ul>" + out.map(s => `<li>${esc(s)}</li>`).join("") + "</ul>" : "<p>-</p>"}
+    <h3>Masuk</h3>${inc.length ? "<ul>" + inc.map(s => `<li>${esc(s)}</li>`).join("") + "</ul>" : "<p>-</p>"}`;
+}
+
+cy.on("tap", "node", evt => {
+  const node = evt.target;
+  if (node.data("kind") === "head") return;
+  cy.elements().addClass("faded");
+  node.closedNeighborhood().removeClass("faded");
+  cy.nodes("[kind='head']").removeClass("faded");
+  showNode(node);
+});
+cy.on("tap", evt => { if (evt.target === cy) { cy.elements().removeClass("faded"); defaultPanel(); } });
+
+function applyLayers() {
+  if (view !== "agent") return;
+  const on = l => document.getElementById("l" + l).checked;
+  cy.batch(() => {
+    cy.nodes("[layer]").forEach(n => n.style("display", on(n.data("layer")) ? "element" : "none"));
+    cy.edges().forEach(e => e.style("display", on(e.data("layer")) ? "element" : "none"));
+  });
+}
+[2, 3, 4, 5].forEach(l => document.getElementById("l" + l).addEventListener("change", applyLayers));
+
+function setView(v, push) {
+  view = v;
+  document.getElementById("v-agent").setAttribute("aria-pressed", v === "agent");
+  document.getElementById("v-onto").setAttribute("aria-pressed", v === "onto");
+  document.getElementById("layerbox").hidden = v !== "agent";
+  cy.elements().remove();
+  cy.add(v === "agent" ? agentElements() : ontoElements());
+  cy.layout({ name: "preset" }).run();
+  applyLayers();
+  fit();
+  defaultPanel();
+  if (push) { try { history.replaceState(null, "", v === "onto" ? "#ontology" : "#agent"); } catch (e) {} }
+}
+document.getElementById("v-agent").addEventListener("click", () => setView("agent", true));
+document.getElementById("v-onto").addEventListener("click", () => setView("onto", true));
+document.getElementById("fit").addEventListener("click", fit);
+window.addEventListener("hashchange", () => setView(location.hash === "#ontology" ? "onto" : "agent", false));
+
+function restyle() { cy.style(styleSheet()); }
+try { matchMedia("(prefers-color-scheme: dark)").addEventListener("change", restyle); } catch (e) {}
+new MutationObserver(restyle).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+window.addEventListener("resize", () => { cy.resize(); });
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { restyle(); fit(); });
+
+document.getElementById("copy").addEventListener("click", ev => {
+  const text = document.getElementById("trig").textContent;
+  const btn = ev.currentTarget;
+  const done = () => { btn.textContent = "Tersalin"; setTimeout(() => btn.textContent = "Salin", 1600); };
+  const fallback = () => { const r = document.createRange(); r.selectNodeContents(document.getElementById("trig")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = "Teks terpilih, tekan Ctrl+C"; };
+  try { navigator.clipboard.writeText(text).then(done, fallback); } catch (e) { fallback(); }
+});
+
+setView(location.hash === "#ontology" ? "onto" : "agent", false);
+</script>
+
+</body>
+</html>
